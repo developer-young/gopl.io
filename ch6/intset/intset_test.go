@@ -3,7 +3,60 @@
 
 package intset
 
-import "fmt"
+import (
+	"fmt"
+	"testing"
+)
+
+func TestLen(t *testing.T) {
+	var x IntSet
+	x.Add(1)
+	x.Add(144)
+	x.Add(9)
+	fmt.Printf("x=%s, len(x): %d\n", x.String(), x.Len())
+}
+
+func TestRemove(t *testing.T) {
+	var x IntSet
+	x.Add(1)
+	x.Add(5)
+	x.Add(9)
+
+	x.Remove(1)
+	x.Remove(9)
+	x.Remove(100)
+	fmt.Printf("After Remove, x=%s, len(x): %d\n", x.String(), x.Len())
+}
+
+func TestClear(t *testing.T) {
+	var x IntSet
+	x.Add(1)
+	x.Add(5)
+	x.Add(9)
+	x.Clear()
+
+	fmt.Printf("After Clear, x=%s, len(x): %d\n", x.String(), x.Len())
+}
+
+func TestCopy(t *testing.T) {
+	var x IntSet
+	x.Add(1)
+	x.Add(5)
+	x.Add(9)
+
+	y := x.Copy()
+	x.Remove(9)
+
+	fmt.Printf("x: %v\n", x.String())
+	fmt.Printf("y: %v\n", y.String())
+}
+
+func TestAddAll(t *testing.T) {
+	var s IntSet
+	nums := []int{1, 2, 16, 32, 64}
+	s.AddAll(nums...)
+	fmt.Printf("s: %v\n", s.String())
+}
 
 func Example_one() {
 	//!+main
@@ -30,7 +83,7 @@ func Example_one() {
 	// true false
 }
 
-func Example_two() {
+func Test_two(t *testing.T) {
 	var x IntSet
 	x.Add(1)
 	x.Add(144)

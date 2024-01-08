@@ -9,6 +9,7 @@ package intset
 import (
 	"bytes"
 	"fmt"
+	"strings"
 )
 
 //!+intset
@@ -42,6 +43,42 @@ func (s *IntSet) UnionWith(t *IntSet) {
 		} else {
 			s.words = append(s.words, tword)
 		}
+	}
+}
+
+// return the number of elements
+func (s *IntSet) Len() int {
+	str := s.String()[1:]
+	items := strings.Fields(str[:len(str)-1])
+	fmt.Printf("Len debug: items %v\n", items)
+	return len(items)
+}
+
+// remove x from the set
+func (s *IntSet) Remove(x int) {
+	if !s.Has(x) {
+		return
+	}
+	word, bit := x/64, uint(x%64)
+	s.words[word] &= (^(1 << bit))
+}
+
+// remove all elements from the set
+func (s *IntSet) Clear() {
+	s.words = s.words[:0]
+}
+
+// return a copy of the set
+func (s *IntSet) Copy() *IntSet {
+	dst := &IntSet{words: make([]uint64, len(s.words))}
+	copy(dst.words, s.words)
+	fmt.Printf("debug Copy: dst %v\n", dst.String())
+	return dst
+}
+
+func (s *IntSet) AddAll(nums ...int) {
+	for _, x := range nums {
+		s.Add(x)
 	}
 }
 
