@@ -9,7 +9,6 @@ package intset
 import (
 	"bytes"
 	"fmt"
-	"strings"
 )
 
 //!+intset
@@ -47,7 +46,7 @@ func (s *IntSet) UnionWith(t *IntSet) {
 }
 
 // 交集
-func (s *IntSet) IntersectWith(t* IntSet) {
+func (s *IntSet) IntersectWith(t *IntSet) {
 	for i, tword := range t.words {
 		if i < len(s.words) {
 			s.words[i] &= tword
@@ -57,21 +56,73 @@ func (s *IntSet) IntersectWith(t* IntSet) {
 
 // 差集
 func (s *IntSet) DifferenceWith(t *IntSet) {
-	u := &IntSet{words: make([]uint64, len(s.words))}
 	for i := range s.words {
 		if i < len(t.words) {
 			s.words[i] &= ^t.words[i]
 		}
 	}
-	s = u.Copy()
 }
 
+func (s *IntSet) SymmetricDifference(t *IntSet) {
+	for i, word := range s.words {
+		if i < len(t.words) {
+			s.words[i] = word ^ t.words[i]
+		}
+	}
+
+	if len(s.words) < len(t.words) {
+		s.words = append(s.words, t.words[s.Len():]...)
+	}
+}
+
+// func (s *IntSet) SymmetricDifference2(t *IntSet) {
+// 	sc := s.Copy()
+// 	sc.DifferenceWith(t)
+// 	tc := t.Copy()
+// 	tc.DifferenceWith(s)
+
+// 	sc.UnionWith(tc)
+// 	s.Clear()
+// 	s.words = sc.words
+// }
+
+// func (s *IntSet) Len() int {
+// 	str := s.String()[1:]
+// 	items := strings.Fields(str[:len(str)-1])
+// 	fmt.Printf("Len debug: items %v\n", items)
+// 	return len(items)
+// }
+
 // return the number of elements
+func (s *IntSet) Elems() []uint64 {
+	res := make([]uint64, 0)
+	for i, word := range s.words {
+		var base uint64
+		for bit := 0; bit < 64; bit++ {
+			base = 1 << bit
+			if base&word != 0 {
+				res = append(res, uint64(i*64+bit))
+			}
+		}
+	}
+	return res
+}
+
 func (s *IntSet) Len() int {
-	str := s.String()[1:]
-	items := strings.Fields(str[:len(str)-1])
-	fmt.Printf("Len debug: items %v\n", items)
-	return len(items)
+	// str := s.String()[1:]
+	// items := strings.Fields(str[:len(str)-1])
+	// fmt.Printf("Len debug: items %v\n", items)
+	sz := 0
+	for _, word := range s.words {
+		var base uint64
+		for bit := 0; bit < 64; bit++ {
+			base = 1 << bit
+			if base&word != 0 {
+				sz++
+			}
+		}
+	}
+	return sz
 }
 
 // remove x from the set

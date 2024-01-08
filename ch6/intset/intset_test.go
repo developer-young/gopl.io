@@ -9,11 +9,25 @@ import (
 )
 
 func TestLen(t *testing.T) {
-	var x IntSet
-	x.Add(1)
-	x.Add(144)
-	x.Add(9)
-	fmt.Printf("x=%s, len(x): %d\n", x.String(), x.Len())
+	x := &IntSet{
+		words: make([]uint64, 2),
+	}
+	for i := 0; i < 2000; i++ {
+		x.Add(i)
+	}
+	fmt.Printf("len(x): %d\n", x.Len())
+}
+
+func TestElems(t *testing.T) {
+	x := &IntSet{
+		words: make([]uint64, 2),
+	}
+	for i := 0; i < 128; i++ {
+		x.Add(i)
+	}
+
+	s := x.Elems()
+	fmt.Printf("x.Elems(): %v\n", s)
 }
 
 func TestRemove(t *testing.T) {
@@ -84,9 +98,29 @@ func TestDifferenceWith(t *testing.T) {
 	y.Add(144)
 	y.Add(9)
 	y.Add(255)
-	fmt.Println(y.String())	
+	fmt.Println(y.String())
 
 	x.DifferenceWith(&y)
+	fmt.Println(x.String())
+}
+
+func TestSymmetricDifference(t *testing.T) {
+	var x, y IntSet
+	x.Add(1)
+	x.Add(3)
+	x.Add(5)
+	x.Add(256)
+	x.Add(65536)
+	fmt.Println(x.String())
+
+	y.Add(1)
+	y.Add(3)
+	y.Add(5)
+	y.Add(9)
+	y.Add(255)
+	fmt.Println(y.String())
+
+	x.SymmetricDifference(&y)
 	fmt.Println(x.String())
 }
 
