@@ -46,6 +46,26 @@ func (s *IntSet) UnionWith(t *IntSet) {
 	}
 }
 
+// 交集
+func (s *IntSet) IntersectWith(t* IntSet) {
+	for i, tword := range t.words {
+		if i < len(s.words) {
+			s.words[i] &= tword
+		}
+	}
+}
+
+// 差集
+func (s *IntSet) DifferenceWith(t *IntSet) {
+	u := &IntSet{words: make([]uint64, len(s.words))}
+	for i := range s.words {
+		if i < len(t.words) {
+			s.words[i] &= ^t.words[i]
+		}
+	}
+	s = u.Copy()
+}
+
 // return the number of elements
 func (s *IntSet) Len() int {
 	str := s.String()[1:]
