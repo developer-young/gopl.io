@@ -6,19 +6,25 @@
 // Package treesort provides insertion sort using an unbalanced binary tree.
 package treesort
 
-//!+
+import (
+	"fmt"
+	"strings"
+)
+
+// !+
 type tree struct {
 	value       int
 	left, right *tree
 }
 
 // Sort sorts values in place.
-func Sort(values []int) {
+func Sort(values []int) *tree {
 	var root *tree
 	for _, v := range values {
 		root = add(root, v)
 	}
 	appendValues(values[:0], root)
+	return root
 }
 
 // appendValues appends the elements of t to values in order
@@ -45,6 +51,25 @@ func add(t *tree, value int) *tree {
 		t.right = add(t.right, value)
 	}
 	return t
+}
+
+func (t *tree) String() string {
+	res := strings.Builder{}
+	var dfs func(t *tree)
+	dfs = func(t *tree) {
+		if t == nil {
+			return
+		}
+		if len(res.String()) > 0 {
+			res.WriteString(" ")
+		}
+		res.WriteString(fmt.Sprint(t.value))
+		dfs(t.left)
+		dfs(t.right)
+	}
+
+	dfs(t)
+	return res.String()
 }
 
 //!-
