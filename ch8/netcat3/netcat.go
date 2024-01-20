@@ -15,10 +15,12 @@ import (
 
 //!+
 func main() {
+	
 	conn, err := net.Dial("tcp", "localhost:8000")
 	if err != nil {
 		log.Fatal(err)
 	}
+
 	done := make(chan struct{})
 	go func() {
 		io.Copy(os.Stdout, conn) // NOTE: ignoring errors
@@ -26,7 +28,9 @@ func main() {
 		done <- struct{}{} // signal the main goroutine
 	}()
 	mustCopy(conn, os.Stdin)
-	conn.Close()
+	// conn.Close()
+	connRW := conn.(*net.TCPConn)
+	connRW.CloseWrite()
 	<-done // wait for background goroutine to finish
 }
 

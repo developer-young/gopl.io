@@ -29,30 +29,9 @@ func echo(c net.Conn, shout string, delay time.Duration, wg *sync.WaitGroup) {
 func handleConn(c net.Conn) {
 	wg := &sync.WaitGroup{}
 	input := bufio.NewScanner(c)
-	timer := time.NewTimer(time.Duration(10) * time.Second)
-	renew := make(chan struct{})
-
-	go func() {
-		for {
-			select {
-				case <-timer.C:
-					fmt.Println("connect timeout 10s")
-					c.Close()
-					return
-				case <-renew:
-					fmt.Println("timer has reset")
-					timer.Reset(time.Duration(10) * time.Second)
-			}
-		}
-	} ()
-
 	for input.Scan() {
 		wg.Add(1)
-		go func() {
-			renew <- struct{}{}
-			echo(c, input.Text(), 1*time.Second, wg)
-		} ()
-
+		go echo(c, input.Text(), 1*time.Second, wg)
 	}
 
 	wg.Wait()

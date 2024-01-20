@@ -1,51 +1,50 @@
 // Copyright © 2016 Alan A. A. Donovan & Brian W. Kernighan.
 // License: https://creativecommons.org/licenses/by-nc-sa/4.0/
 
-// See page 251.
+// See page 250.
 
-// The du4 command computes the disk usage of the files in a directory.
+// The du3 command computes the disk usage of the files in a directory.
 package main
 
-// The du4 variant includes cancellation:
-// it terminates quickly when the user hits return.
+// The du3 variant traverses all directories in parallel.
+// It uses a concurrency-limiting counting semaphore
+// to avoid opening too many files at once.
 
 import (
+	"flag"
 	"fmt"
+	"io/ioutil"
 	"os"
 	"path/filepath"
 	"sync"
 	"time"
 )
 
-// !+1
-var done = make(chan struct{})
+var vFlag = flag.Bool("v", false, "show verbose progress messages")
 
-func cancelled() bool {
-	select {
-	case <-done:
-		return true
-	default:
-		return false
+func main() {
+	tick := time.Tick(5 * time.Second)
+	for {
+		select {
+		case <-tick:
+			du()
+
+		default:
+
+		}
 	}
 }
 
-//!-1
+//!+
+func du() {
+	// ...determine roots...
 
-func main() {
+	//!-
+	flag.Parse()
+
 	// Determine the initial directories.
-	roots := os.Args[1:]
-	if len(roots) == 0 {
-		roots = []string{"."}
-	}
-
-	//!+2
-	// Cancel traversal when input is detected.
-	go func() {
-		os.Stdin.Read(make([]byte, 1)) // read a single byte
-		close(done)
-	}()
-	//!-2
-
+	roots := []string{"/root"}
+	//!+
 	// Traverse each root of the file tree in parallel.
 	fileSizes := make(chan int64)
 	var n sync.WaitGroup
@@ -57,23 +56,18 @@ func main() {
 		n.Wait()
 		close(fileSizes)
 	}()
+	//!-
 
 	// Print the results periodically.
-	tick := time.Tick(500 * time.Millisecond)
+	var tick <-chan time.Time
+	if *vFlag {
+		tick = time.Tick(500 * time.Millisecond)
+	}
 	var nfiles, nbytes int64
 loop:
-	//!+3
 	for {
 		select {
-		case <-done:
-			// Drain fileSizes to allow existing goroutines to finish.
-			for range fileSizes {
-				// Do nothing.
-			}
-			return
 		case size, ok := <-fileSizes:
-			// ...
-			//!-3
 			if !ok {
 				break loop // fileSizes was closed
 			}
@@ -83,8 +77,13 @@ loop:
 			printDiskUsage(nfiles, nbytes)
 		}
 	}
+
 	printDiskUsage(nfiles, nbytes) // final totals
+	//!+
+	// ...select loop...
 }
+
+//!-
 
 func printDiskUsage(nfiles, nbytes int64) {
 	fmt.Printf("%d files  %.1f GB\n", nfiles, float64(nbytes)/1e9)
@@ -92,15 +91,10 @@ func printDiskUsage(nfiles, nbytes int64) {
 
 // walkDir recursively walks the file tree rooted at dir
 // and sends the size of each found file on fileSizes.
-// !+4
+//!+walkDir
 func walkDir(dir string, n *sync.WaitGroup, fileSizes chan<- int64) {
 	defer n.Done()
-	if cancelled() {
-		return
-	}
 	for _, entry := range dirents(dir) {
-		// ...
-		//!-4
 		if entry.IsDir() {
 			n.Add(1)
 			subdir := filepath.Join(dir, entry.Name())
@@ -108,40 +102,26 @@ func walkDir(dir string, n *sync.WaitGroup, fileSizes chan<- int64) {
 		} else {
 			fileSizes <- entry.Size()
 		}
-		//!+4
 	}
 }
 
-//!-4
+//!-walkDir
 
-var sema = make(chan struct{}, 20) // concurrency-limiting counting semaphore
+//!+sema
+// sema is a counting semaphore for limiting concurrency in dirents.
+var sema = make(chan struct{}, 20)
 
 // dirents returns the entries of directory dir.
-// !+5
 func dirents(dir string) []os.FileInfo {
-	// sema <- struct{}{}
-	select {
-	case sema <- struct{}{}: // acquire token
-	case <-done:
-		return nil // cancelled
-	}
-
+	sema <- struct{}{}        // acquire token
 	defer func() { <-sema }() // release token
+	// ...
+	//!-sema
 
-	// ...read directory...
-	//!-5
-
-	f, err := os.Open(dir)
+	entries, err := ioutil.ReadDir(dir)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "du: %v\n", err)
 		return nil
-	}
-	defer f.Close()
-
-	entries, err := f.Readdir(0) // 0 => no limit; read all entries
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "du: %v\n", err)
-		// Don't return: Readdir may return partial results.
 	}
 	return entries
 }

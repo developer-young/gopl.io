@@ -1,17 +1,10 @@
-// Copyright © 2016 Alan A. A. Donovan & Brian W. Kernighan.
-// License: https://creativecommons.org/licenses/by-nc-sa/4.0/
-
-// See page 58.
-//!+
-
-// Surface computes an SVG rendering of a 3-D surface function.
 package main
 
 import (
 	"fmt"
 	"math"
-	"time"
 	"sync"
+    "time"
 )
 
 const (
@@ -25,9 +18,9 @@ const (
 
 var sin30, cos30 = math.Sin(angle), math.Cos(angle) // sin(30°), cos(30°)
 
-type Point struct {
-	x float64
-	y float64
+type point struct {
+	i, j  int
+	ax, ay float64
 }
 
 func traceDuring() func() {
@@ -39,61 +32,41 @@ func traceDuring() func() {
 }
 
 func main() {
-	defer traceDuring()()
+    defer traceDuring()()
+
+	results := make(chan point)
+	var wg sync.WaitGroup
+
+	for i := 0; i < cells; i++ {
+		for j := 0; j < cells; j++ {
+			wg.Add(1)
+			go func(i, j int) {
+				defer wg.Done()
+				ax, ay := corner(i+1, j)
+				results <- point{i, j, ax, ay}
+			}(i, j)
+		}
+	}
+
+	go func() {
+		wg.Wait()
+		close(results)
+	}()
 
 	fmt.Printf("<svg xmlns='http://www.w3.org/2000/svg' "+
 		"style='stroke: grey; fill: white; stroke-width: 0.7' "+
 		"width='%d' height='%d'>", width, height)
-	
-	// ach, bch, cch, dch := make(chan Point), make(chan Point), make(chan Point), make(chan Point)
-	wg := &sync.WaitGroup{}
-	pts := make(chan Point, 4)
-	for i := 0; i < cells; i++ {
-		for j := 0; j < cells; j++ {
-			wg.Add(1)
-			go func (i, j int) {
-				defer wg.Done()
-				
-			}
-		}
+	for p := range results {
+		bx, by := corner(p.i, p.j)
+		cx, cy := corner(p.i, p.j+1)
+		dx, dy := corner(p.i+1, p.j+1)
+		fmt.Printf("<polygon points='%g,%g %g,%g %g,%g %g,%g'/>\n",
+			p.ax, p.ay, bx, by, cx, cy, dx, dy)
 	}
-
-	fmt.Printf("<polygon points=")
-	go func() {
-		i := 0
-		for p := range pts {
-			if (i > 0) {
-				fmt.Printf(" ")
-			}
-			fmt.Printf("%g,%g", p.x, p.y);
-			i++
-		}
-		fmt.Printf("/>\n")
-		fmt.Println("</svg>")
-	} ()
-
-	wg.Wait()
-	close(pts)
-
-	// go func() {
-	// 	wg.Wait()
-	// 	close(pts)
-	// } ()
-
-	// i := 0
-	// for p := range pts {
-	// 	if (i > 0) {
-	// 		fmt.Printf(" ")
-	// 	}
-	// 	fmt.Printf("%g,%g", p.x, p.y);
-	// 	i++
-	// }
-	// fmt.Printf("/>\n")
-	// fmt.Println("</svg>")
+	fmt.Println("</svg>")
 }
 
-func corner(i, j int, pt chan <- Point, wg *sync.WaitGroup) {
-	defer wg.Done()
+func corner(i, j int) (float64, float64) {
 	// Find point (x,y) at corner of cell (i,j).
 	x := xyrange * (float64(i)/cells - 0.5)
 	y := xyrange * (float64(j)/cells - 0.5)
@@ -104,12 +77,10 @@ func corner(i, j int, pt chan <- Point, wg *sync.WaitGroup) {
 	// Project (x,y,z) isometrically onto 2-D SVG canvas (sx,sy).
 	sx := width/2 + (x-y)*cos30*xyscale
 	sy := height/2 + (x+y)*sin30*xyscale - z*zscale
-	pt <- Point{sx, sy}	
+	return sx, sy
 }
 
 func f(x, y float64) float64 {
 	r := math.Hypot(x, y) // distance from (0,0)
 	return math.Sin(r) / r
 }
-
-//!-

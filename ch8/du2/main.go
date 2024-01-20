@@ -45,7 +45,7 @@ func main() {
 	// Print the results periodically.
 	var tick <-chan time.Time
 	if *verbose {
-		tick = time.Tick(500 * time.Millisecond)
+		tick = time.Tick(100 * time.Millisecond)
 	}
 	var nfiles, nbytes int64
 loop:
